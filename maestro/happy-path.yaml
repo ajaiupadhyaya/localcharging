@@ -1,0 +1,10 @@
+# Maestro smoke test — run after dev build on simulator
+# maestro test maestro/happy-path.yaml
+
+appId: com.chargelocal.app
+---
+- launchApp
+- assertVisible: "ChargeLocal"
+- tapOn: "Map"
+- tapOn: "Host"
+- tapOn: "Profile"

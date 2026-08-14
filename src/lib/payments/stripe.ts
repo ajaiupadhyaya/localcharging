@@ -1,33 +1,46 @@
 import { supabase } from '@/lib/auth/supabase';
 
-export async function createConnectOnboardingLink(refreshUrl?: string, returnUrl?: string) {
+async function invokeStripe(body: Record<string, unknown>) {
   const { data: session } = await supabase.auth.getSession();
   const { data, error } = await supabase.functions.invoke('stripe', {
-    body: { action: 'create_connect_link', refreshUrl, returnUrl },
+    body,
     headers: { Authorization: `Bearer ${session.session?.access_token}` },
   });
   if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+export async function createConnectOnboardingLink(refreshUrl?: string, returnUrl?: string) {
+  const data = await invokeStripe({ action: 'create_connect_link', refreshUrl, returnUrl });
   return data.url as string;
 }
 
 export async function authorizeBookingPayment(bookingId: string, amount: number, customerId?: string) {
-  const { data: session } = await supabase.auth.getSession();
-  const { data, error } = await supabase.functions.invoke('stripe', {
-    body: { action: 'create_payment_intent', bookingId, amount, customerId },
-    headers: { Authorization: `Bearer ${session.session?.access_token}` },
+  const data = await invokeStripe({
+    action: 'create_payment_intent',
+    bookingId,
+    amount,
+    customerId,
   });
-  if (error) throw error;
-  return data.clientSecret as string;
+  return {
+    clientSecret: data.clientSecret as string,
+    paymentId: data.paymentId as string | undefined,
+  };
 }
 
-export async function recordPayment(bookingId: string, driverId: string, hostId: string, amount: number, platformFee: number) {
-  await supabase.from('payments').insert({
-    booking_id: bookingId,
-    driver_id: driverId,
-    host_id: hostId,
-    amount,
-    platform_fee: platformFee,
-    host_amount: amount - platformFee,
-    status: 'authorized',
+export async function captureBookingPayment(bookingId: string, amount?: number) {
+  return invokeStripe({ action: 'capture_payment', bookingId, amount });
+}
+
+export async function cancelBookingPayment(bookingId: string) {
+  return invokeStripe({ action: 'cancel_payment', bookingId });
+}
+
+export async function notifyBooking(bookingId: string, event: string) {
+  const { data: session } = await supabase.auth.getSession();
+  await supabase.functions.invoke('notify', {
+    body: { bookingId, event },
+    headers: { Authorization: `Bearer ${session.session?.access_token}` },
   });
 }

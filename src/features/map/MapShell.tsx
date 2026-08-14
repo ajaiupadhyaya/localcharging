@@ -1,17 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
 import { MapCanvas, useDefaultRegion, type MapRegion } from '@/components/map/MapCanvas';
 import { ChargerDetailSheet } from '@/components/map/ChargerDetailSheet';
 import { MapFiltersBar } from '@/components/map/MapFilters';
 import { TextField } from '@/components/ui/TextField';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, typography } from '@/constants/theme';
 import { useNearbyChargers } from '@/hooks/useNearbyChargers';
 import { geocodeSearch } from '@/lib/maps/geocoding';
 import { AnalyticsEvents, track } from '@/lib/analytics/events';
-import type { MapCharger, MapFilter, MapFilters } from '@/types';
+import type { MapCharger, MapFilters } from '@/types';
 
 export function MapShell() {
+  const router = useRouter();
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
   const [region, setRegion] = useState<MapRegion>(useDefaultRegion());
@@ -66,10 +69,10 @@ export function MapShell() {
             />
           </View>
           <MapFiltersBar
-            active={filters.category}
-            onChange={(category: MapFilter) => {
-              setFilters((f) => ({ ...f, category }));
-              track(AnalyticsEvents.FILTER_USED, { category });
+            filters={filters}
+            onChange={(next) => {
+              setFilters(next);
+              track(AnalyticsEvents.FILTER_USED, { category: next.category });
             }}
           />
           <View style={styles.countPill}>
@@ -102,6 +105,16 @@ export function MapShell() {
           userLocation={userLocation}
         />
       </View>
+      {!isLoading && chargers.length === 0 ? (
+        <View style={styles.emptyOverlay} pointerEvents="box-none">
+          <EmptyState
+            title="No chargers here yet."
+            description="Try expanding the search or add your own charger."
+            actionLabel="Host a charger"
+            onAction={() => router.push('/host/onboarding')}
+          />
+        </View>
+      ) : null}
       {(selected || isWide) && (
         <View style={[styles.detailPanel, isWide && styles.detailPanelWide]}>
           {Platform.OS !== 'web' && !isWide ? null : null}
@@ -148,6 +161,14 @@ const styles = StyleSheet.create({
   },
   countText: { ...typography.caption, color: colors.warmWhite },
   errorText: { ...typography.caption, color: colors.warning },
+  emptyOverlay: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 120,
+    backgroundColor: 'rgba(247,246,243,0.96)',
+    borderRadius: 16,
+  },
   detailPanel: {
     position: 'absolute',
     left: 0,

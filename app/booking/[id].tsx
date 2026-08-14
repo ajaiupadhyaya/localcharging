@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/Button';
@@ -9,7 +9,23 @@ import { supabase } from '@/lib/auth/supabase';
 import { bookingStatusLabel, canSeePrivateLocation } from '@/lib/bookings/stateMachine';
 import { ActiveChargingPanel } from '@/features/bookings/ActiveChargingPanel';
 import { BookingMessages } from '@/features/messaging/BookingMessages';
+import { cancelBookingPayment, captureBookingPayment, notifyBooking } from '@/lib/payments/stripe';
+import { openInMaps } from '@/lib/maps/openInMaps';
+import { blockUser, reportUser } from '@/lib/trust/reports';
 import type { Booking, ChargingSession } from '@/types';
+
+type BookingDetail = Booking & {
+  host_id?: string;
+  charger?: {
+    name?: string;
+    exact_address?: string | null;
+    arrival_instructions?: string | null;
+    access_instructions_private?: string | null;
+    private_lat?: number | null;
+    private_lng?: number | null;
+    host_id?: string;
+  };
+};
 
 export default function BookingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -20,13 +36,9 @@ export default function BookingScreen() {
   const { data: booking, isLoading, refetch } = useQuery({
     queryKey: ['booking', id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*, chargers(*)')
-        .eq('id', id)
-        .single();
+      const { data, error } = await supabase.rpc('get_booking_detail', { p_booking_id: id });
       if (error) throw error;
-      return data as Booking & { chargers: any };
+      return data as BookingDetail;
     },
     enabled: Boolean(id),
   });
@@ -62,11 +74,22 @@ export default function BookingScreen() {
     return <ActivityIndicator style={{ flex: 1 }} color={colors.electricIndigo} />;
   }
 
-  const charger = booking.chargers;
+  const charger = booking.charger;
   const showPrivate = canSeePrivateLocation(booking.status);
+  const isHost = user?.id === booking.host_id || user?.id === charger?.host_id;
+  const otherUserId = isHost ? booking.driver_id : booking.host_id ?? charger?.host_id;
 
-  const transition = async (status: string) => {
-    await supabase.rpc('transition_booking', { p_booking_id: id, p_new_status: status });
+  const transition = async (status: string, reason?: string) => {
+    const { error } = await supabase.rpc('transition_booking', {
+      p_booking_id: id,
+      p_new_status: status,
+      p_reason: reason ?? null,
+    });
+    if (error) Alert.alert('Could not update', error.message);
+    if (status === 'cancelled' || status === 'no_show') {
+      await cancelBookingPayment(id!).catch(() => undefined);
+      notifyBooking(id!, 'booking_cancelled').catch(() => undefined);
+    }
     refetch();
   };
 
@@ -85,6 +108,9 @@ export default function BookingScreen() {
       p_energy_kwh: energy,
       p_final_cost: finalCost,
     });
+    if (finalCost > 0) {
+      await captureBookingPayment(id!, finalCost).catch(() => undefined);
+    }
     refetch();
     router.push(`/booking/${id}/review`);
   };
@@ -103,6 +129,17 @@ export default function BookingScreen() {
               <Text style={styles.body}>{charger.arrival_instructions}</Text>
             </>
           ) : null}
+          {charger.access_instructions_private ? (
+            <>
+              <Text style={styles.label}>ACCESS</Text>
+              <Text style={styles.body}>{charger.access_instructions_private}</Text>
+            </>
+          ) : null}
+          <Button
+            title="Open in Maps"
+            variant="secondary"
+            onPress={() => openInMaps(charger.exact_address!, charger.private_lat, charger.private_lng)}
+          />
         </View>
       ) : (
         <Text style={styles.hint}>Exact location unlocks after approval.</Text>
@@ -117,14 +154,37 @@ export default function BookingScreen() {
         <Button title="Start charging" onPress={startSession} fullWidth />
       ) : null}
       {booking.status === 'charging' ? (
-        <ActiveChargingPanel
-          booking={booking}
-          session={session}
-          onEnd={endSession}
-        />
+        <ActiveChargingPanel booking={booking} session={session} onEnd={endSession} />
       ) : null}
       {booking.status === 'completed' ? (
         <Button title="Leave a review" onPress={() => router.push(`/booking/${id}/review`)} fullWidth />
+      ) : null}
+      {['requested', 'approved', 'arriving', 'checked_in'].includes(booking.status) ? (
+        <Button title="Cancel booking" variant="ghost" onPress={() => transition('cancelled')} fullWidth />
+      ) : null}
+      {isHost && ['approved', 'arriving'].includes(booking.status) ? (
+        <Button title="Mark no-show" variant="danger" onPress={() => transition('no_show')} fullWidth />
+      ) : null}
+      {otherUserId ? (
+        <Button
+          title="Report this person"
+          variant="ghost"
+          onPress={() => {
+            if (!user) return;
+            reportUser(otherUserId, user.id, 'safety', 'Reported from booking');
+            Alert.alert('Reported', 'Thanks — we’ll review this.');
+          }}
+        />
+      ) : null}
+      {otherUserId && user ? (
+        <Button
+          title="Block this person"
+          variant="ghost"
+          onPress={async () => {
+            await blockUser(user.id, otherUserId);
+            Alert.alert('Blocked', 'You won’t see new requests from them.');
+          }}
+        />
       ) : null}
       <BookingMessages bookingId={id!} />
     </ScrollView>

@@ -1,6 +1,6 @@
 import React from 'react';
 
-/** Web: Stripe native SDK is not available — payments deferred to native or Stripe.js later. */
+/** Web uses Stripe.js in confirmPayment.web.ts (test PaymentMethod pm_card_visa). */
 export function StripeProviderWrapper({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }

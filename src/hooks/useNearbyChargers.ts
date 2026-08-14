@@ -22,6 +22,16 @@ function applyMapFilters(data: MapCharger[], filters: MapFilters): MapCharger[] 
   if (filters.instantApproval) {
     result = result.filter((c) => c.approval_mode === 'automatic');
   }
+  if (filters.maxPrice != null) {
+    result = result.filter((c) => {
+      if (c.source === 'public') return true;
+      if (c.pricing_type === 'free') return true;
+      if (c.pricing_type === 'per_kwh') return (c.price_per_kwh ?? 0) * 30 <= filters.maxPrice!;
+      if (c.pricing_type === 'per_session') return (c.price_per_session ?? 0) <= filters.maxPrice!;
+      if (c.pricing_type === 'per_hour') return (c.price_per_hour ?? 0) * 2 <= filters.maxPrice!;
+      return true;
+    });
+  }
   return result;
 }
 

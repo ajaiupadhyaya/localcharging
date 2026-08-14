@@ -8,7 +8,26 @@ const BBOX = {
   maxLng: -76.5,
 };
 
-Deno.serve(async (req) => {
+const OCM_CONNECTOR: Record<number, string> = {
+  1: 'j1772',
+  2: 'chademo',
+  25: 'other',
+  27: 'nacs',
+  30: 'nacs',
+  32: 'ccs',
+  33: 'ccs',
+  1036: 'nacs',
+};
+
+function mapConnectors(connections: { ConnectionTypeID?: number }[]): string[] {
+  const types = new Set<string>();
+  for (const c of connections ?? []) {
+    types.add(OCM_CONNECTOR[c.ConnectionTypeID ?? -1] ?? 'other');
+  }
+  return types.size ? [...types] : ['other'];
+}
+
+Deno.serve(async () => {
   const ocmKey = Deno.env.get('OPEN_CHARGE_MAP_API_KEY');
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -40,7 +59,7 @@ Deno.serve(async (req) => {
         name: poi.AddressInfo?.Title ?? 'Public charger',
         location: `SRID=4326;POINT(${lng} ${lat})`,
         address: poi.AddressInfo?.AddressLine1 ?? null,
-        connector_types: ['j1772'],
+        connector_types: mapConnectors(connectors),
         max_kw: maxKw || null,
         status: 'unknown',
         operator: poi.OperatorInfo?.Title ?? null,
@@ -52,7 +71,7 @@ Deno.serve(async (req) => {
     if (!error) synced++;
   }
 
-  return new Response(JSON.stringify({ synced, attribution: 'Open Charge Map' }), {
+  return new Response(JSON.stringify({ synced, attribution: 'Data © Open Charge Map contributors' }), {
     headers: { 'Content-Type': 'application/json' },
   });
 });

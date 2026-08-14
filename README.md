@@ -30,7 +30,7 @@ A local charging layer for your EV — residential chargers alongside public inf
 
 2. **Environment**
 
-   Copy `.env.example` to `.env` and fill in keys. See [docs/supabase-setup.md](docs/supabase-setup.md) for this project's Supabase ref (`sqyypzixzprkiwapzidc`).
+   Copy `.env.example` to `.env` and fill in keys. See [docs/supabase-setup.md](docs/supabase-setup.md) for this project's Supabase ref (`tnqyioeviefqswcqkavq`).
 
    ```bash
    cp .env.example .env
@@ -43,10 +43,12 @@ A local charging layer for your EV — residential chargers alongside public inf
    npx supabase db push
    npx supabase functions deploy sync-public-stations
    npx supabase functions deploy stripe
+   npx supabase functions deploy notify
    npx supabase functions deploy delete-account
-   ```
+   npm run seed
+```
 
-   Set Edge secrets: `OPEN_CHARGE_MAP_API_KEY`, `STRIPE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+   Set Edge secrets: `OPEN_CHARGE_MAP_API_KEY`, `STRIPE_SECRET_KEY`. Service role is injected automatically for Edge Functions; use it locally only for `npm run seed`.
 
 4. **Run (requires dev build for Mapbox on device)**
 
@@ -83,6 +85,7 @@ supabase/      migrations, edge functions, seed
 
 ```bash
 npm test
+npm run seed          # demo users + Mid-Atlantic listings (needs service role or run supabase/seed/story_users.sql)
 ```
 
 ## App Store submission (Phase 10)

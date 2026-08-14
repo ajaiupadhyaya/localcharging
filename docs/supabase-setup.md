@@ -1,11 +1,11 @@
 # Supabase setup — ChargeLocal
 
-**Project ref:** `sqyypzixzprkiwapzidc`  
-**API URL:** `https://sqyypzixzprkiwapzidc.supabase.co`
+**Project ref:** `tnqyioeviefqswcqkavq`  
+**API URL:** `https://tnqyioeviefqswcqkavq.supabase.co`
 
 ## 1. Fill `.env` (client keys)
 
-Open [API Settings](https://supabase.com/dashboard/project/sqyypzixzprkiwapzidc/settings/api) and copy into [`.env`](../.env):
+Open [API Settings](https://supabase.com/dashboard/project/tnqyioeviefqswcqkavq/settings/api) and copy into [`.env`](../.env):
 
 | Variable | Where to get it |
 |----------|-----------------|
@@ -18,7 +18,7 @@ Restart Expo after changing `.env`: `npx expo start -c`
 
 ## 2. Edge Function secrets (server only — NOT in `.env`)
 
-In [Edge Function Secrets](https://supabase.com/dashboard/project/sqyypzixzprkiwapzidc/settings/functions):
+In [Edge Function Secrets](https://supabase.com/dashboard/project/tnqyioeviefqswcqkavq/settings/functions):
 
 | Secret | Used by |
 |--------|---------|
@@ -33,11 +33,9 @@ If the project is **Active** (not paused):
 
 ```bash
 npx supabase login
-npx supabase link --project-ref sqyypzixzprkiwapzidc
+npx supabase link --project-ref tnqyioeviefqswcqkavq
 npx supabase db push
 ```
-
-Or ask Cursor to run migrations via the Supabase MCP once the database responds (MCP reported timeouts while the project was still initialising).
 
 ## 4. Enable PostGIS
 
@@ -49,19 +47,41 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 
 ## 5. Storage buckets
 
-Create in [Storage](https://supabase.com/dashboard/project/sqyypzixzprkiwapzidc/storage/buckets):
+Migrations create:
 
 - `avatars` — public read, authenticated upload to own folder
 - `charger-photos` — public read, host upload
 
 ## 6. Auth redirect URLs
 
-In [Auth URL config](https://supabase.com/dashboard/project/sqyypzixzprkiwapzidc/auth/url-configuration), add:
+In [Auth URL config](https://supabase.com/dashboard/project/tnqyioeviefqswcqkavq/auth/url-configuration), add:
 
 - `chargelocal://`
 - `exp://127.0.0.1:8081` (local dev)
+
+## 7. Demo seed
+
+After setting `SUPABASE_SERVICE_ROLE_KEY` in `.env` (local only):
+
+```bash
+npm run seed
+```
+
+Creates `driver@chargelocal.test` / `host@chargelocal.test` (password `ChargeLocalDemo1!`) plus persona listings around Cville / Richmond / DC.
+
+## 8. Public stations
+
+```bash
+npx supabase functions deploy sync-public-stations
+npx supabase functions deploy stripe
+npx supabase functions deploy notify
+npx supabase functions deploy delete-account
+```
+
+Schedule `sync-public-stations` in the dashboard cron (e.g. every 6 hours).
 
 ## Troubleshooting
 
 - **MCP / SQL timeouts:** Project may be paused or still provisioning — open the dashboard and confirm status is **Active**.
 - **`get_publishable_keys` failed:** Paste the anon/publishable key manually from API Settings into `.env`.
+- **Empty map:** run `npm run seed` and confirm you are zoomed near Charlottesville.

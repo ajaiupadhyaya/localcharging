@@ -29,5 +29,9 @@ export async function blockUser(userId: string, blockedId: string) {
 }
 
 export async function pauseCharger(chargerId: string) {
-  return supabase.from('chargers').update({ status: 'paused', availability_state: 'temporarily_unavailable' }).eq('id', chargerId);
+  return supabase.rpc('set_charger_paused', { p_charger_id: chargerId, p_paused: true });
+}
+
+export async function resumeCharger(chargerId: string) {
+  return supabase.rpc('set_charger_paused', { p_charger_id: chargerId, p_paused: false });
 }

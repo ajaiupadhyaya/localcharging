@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { reportCharger } from '@/lib/trust/reports';
@@ -27,6 +27,7 @@ export function ChargerDetailSheet({ charger, onClose }: ChargerDetailSheetProps
     <View style={styles.sheet}>
       <View style={styles.handle} />
       <Pressable onPress={onClose} style={styles.closeHit} accessibilityLabel="Close" />
+      {charger.photos?.[0] ? <Image source={{ uri: charger.photos[0] }} style={styles.hero} accessibilityLabel="Parking photo" /> : null}
       <Text style={styles.title}>{charger.name}</Text>
       <Text style={styles.meta}>
         {charger.rating ? `${charger.rating.toFixed(1)} ★ · ` : ''}
@@ -104,6 +105,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: colors.border,
   },
+  hero: { width: '100%', height: 140, borderRadius: 12, backgroundColor: colors.border },
   handle: {
     alignSelf: 'center',
     width: 36,

@@ -1,5 +1,5 @@
 # Supabase local config — linked to remote project via Cursor MCP / dashboard
-# Run: npx supabase link --project-ref sqyypzixzprkiwapzidc (after supabase login)
+# Run: npx supabase link --project-ref tnqyioeviefqswcqkavq (after supabase login)
 
 project_id = "tnqyioeviefqswcqkavq"
 

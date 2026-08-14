@@ -31,4 +31,5 @@ export const AnalyticsEvents = {
   SESSION_COMPLETED: 'session_completed',
   HOST_ONBOARDING_STARTED: 'host_onboarding_started',
   HOST_ONBOARDING_COMPLETED: 'host_onboarding_completed',
+  REVIEW_SUBMITTED: 'review_submitted',
 } as const;

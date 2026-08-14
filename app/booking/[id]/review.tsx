@@ -1,32 +1,30 @@
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { colors, typography } from '@/constants/theme';
 import { supabase } from '@/lib/auth/supabase';
-import { useAuth } from '@/lib/auth/AuthProvider';
+import { AnalyticsEvents, track } from '@/lib/analytics/events';
 
 export default function ReviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
+  const router = useRouter();
   const [rating, setRating] = useState('5');
   const [comment, setComment] = useState('');
 
   const submit = async () => {
-    const { data: booking } = await supabase.from('bookings').select('*, chargers(host_id)').eq('id', id).single();
-    if (!booking) return;
-    const revieweeId =
-      user?.id === booking.driver_id ? (booking.chargers as any).host_id : booking.driver_id;
-    const { error } = await supabase.from('reviews').insert({
-      booking_id: id,
-      reviewer_id: user!.id,
-      reviewee_id: revieweeId,
-      rating: Number(rating),
-      comment: comment || null,
+    const { error } = await supabase.rpc('submit_review', {
+      p_booking_id: id,
+      p_rating: Number(rating),
+      p_comment: comment || null,
     });
     if (error) Alert.alert('Error', error.message);
-    else Alert.alert('Thanks', 'Thanks for charging locally.');
+    else {
+      track(AnalyticsEvents.REVIEW_SUBMITTED, { rating: Number(rating) });
+      Alert.alert('Thanks', 'Thanks for charging locally.');
+      router.back();
+    }
   };
 
   return (

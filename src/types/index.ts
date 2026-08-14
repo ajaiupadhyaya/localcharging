@@ -104,6 +104,7 @@ export interface Booking {
   id: string;
   charger_id: string;
   driver_id: string;
+  host_id?: string;
   vehicle_id: string | null;
   requested_start: string;
   requested_end: string;

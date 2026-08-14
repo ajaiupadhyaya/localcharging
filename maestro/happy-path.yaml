@@ -1,10 +1,18 @@
-# Maestro smoke test — run after dev build on simulator
+# Maestro happy path — run after iOS dev build
 # maestro test maestro/happy-path.yaml
 
 appId: com.chargelocal.app
 ---
 - launchApp
 - assertVisible: "ChargeLocal"
-- tapOn: "Map"
+- tapOn: "Where are you going?"
+- tapOn: "Any"
+- tapOn: "Residential"
+- tapOn: "More filters"
+- tapOn: "Apply"
 - tapOn: "Host"
 - tapOn: "Profile"
+# Host approve + session require two accounts; complete manually:
+# 1. Sign in driver@chargelocal.test → request a residential charger
+# 2. Sign in host@chargelocal.test → approve
+# 3. Driver: Open in Maps → start/end session → review
